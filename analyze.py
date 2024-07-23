@@ -16,7 +16,7 @@ class Word:
   def __repr__(self):
     return self.__str__()
 
-class Game:  
+class Game:
   def __init__(self):
     self.words = []
 
@@ -33,6 +33,7 @@ class Game:
   def __repr__(self):
     return self.__str__()
 
+################################################################################
 
 mymap = {
     '0-1': 1,
@@ -169,14 +170,6 @@ mymap = {
 }
 
 
-###############  GETTING INFORMATION  ###############
-def getSpangrams(data: dict):
-  spangrams = []
-  for day in data:
-    spangrams.append(list(map(int, day["solutions"][day["spangram"]].split("|"))))
-  return spangrams
-
-
 ###############  INFORMATION ANALYSIS  ###############
 def getSizeFrequency(words: list[list[int]]):
   sizes = [len(word) for word in words]
@@ -212,57 +205,6 @@ def getMostCommonEdges(words):
 
   return cx
 
-
-###############  LOCATION  ###############
-def livesInMiddle2Columns(words):
-  enclosed = []
-  area = {2, 3, 8, 9, 14, 15, 20, 21, 26, 27, 32, 33, 38, 39, 44, 45}
-
-  for word in words:
-    if all([c in area for c in word]):
-      enclosed.append(word)
-
-  return enclosed
-
-def livesInMiddle4Columns(words):
-  enclosed = []
-  area = {1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16, 19, 20, 21, 22, 25, 26, 27, 28, 31, 32, 33, 34, 37, 38, 39, 40, 43, 44, 45, 46}
-
-  for word in words:
-    if all([c in area for c in word]):
-      enclosed.append(word)
-
-  return enclosed
-
-def livesInMiddle2Rows(words):
-  enclosed = []
-  area = {i for i in range(18, 30)}
-
-  for word in words:
-    if all([c in area for c in word]):
-      enclosed.append(word)
-
-  return enclosed
-
-def livesInMiddle4Rows(words):
-  enclosed = []
-  area = {i for i in range(12, 36)}
-
-  for word in words:
-    if all([c in area for c in word]):
-      enclosed.append(word)
-
-  return enclosed
-
-def livesInMiddle6Rows(words):
-  enclosed = []
-  area = {i for i in range(6, 42)}
-
-  for word in words:
-    if all([c in area for c in word]):
-      enclosed.append(word)
-
-  return enclosed
 
 
 ###############  VISUALIZERS  ###############
@@ -312,38 +254,86 @@ def spangramsLongerThanAllOthers(data):
   return (lt, eq, gt)
 
   
+################################################################################
 
-def getData():
+def getData() -> tuple[list[Game], list[Word], list[Word]]:
+  """
+  Parses raw data into a list of games, spangrams, and words.
+  """
   with open("raw.json") as f:
     data = json.load(f)["solns"]
 
   games = [Game() for _ in range(len(data))]
+  spangrams, words = [], []
 
   for i, day in enumerate(data):
     for word in day["solutions"]:
       locations = list(map(int, day["solutions"][word].split("|")))
+      parsed_word = Word(word, locations, len(locations))
+
       if word != day["spangram"]:
-        games[i].words.append(Word(word, locations, len(locations)))
+        games[i].words.append(parsed_word)
+        words.append(parsed_word)
       else:
-        games[i].spangram = Word(word, locations, len(locations))
+        games[i].spangram = parsed_word
+        spangrams.append(parsed_word)
 
-  return games
+  return games, spangrams, words
 
+def livesInMiddle2Columns(words: list[Word]) -> list[Word]:
+  area = {2, 3, 8, 9, 14, 15, 20, 21, 26, 27, 32, 33, 38, 39, 44, 45}
+  return [word for word in words if all([c in area for c in word.locations])]
+
+def livesInMiddle4Columns(words: list[Word]) -> list[Word]:
+  area = {1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16, 19, 20, 21, 22, 25, 26, 27, 28, 31, 32, 33, 34, 37, 38, 39, 40, 43, 44, 45, 46}
+  return [word for word in words if all([c in area for c in word.locations])]
+
+def livesInMiddle2Rows(words: list[Word]) -> list[Word]:
+  area = {i for i in range(18, 30)}
+  return [word for word in words if all([c in area for c in word.locations])]
+
+def livesInMiddle4Rows(words: list[Word]) -> list[Word]:
+  area = {i for i in range(12, 36)}
+  return [word for word in words if all([c in area for c in word.locations])]
+
+def livesInMiddle6Rows(words: list[Word]) -> list[Word]:
+  area = {i for i in range(6, 42)}
+  return [word for word in words if all([c in area for c in word.locations])]
+
+################################################################################
 
 def main():
-  games = getData()
-  spangrams = [game.spangram for game in games]
-  words = []
+  # Data setup
+  games, spangrams, words = getData()
+
+  # Spangram analysis
+  # 1. What's the most common length of the spangram?
+  spangramLengths = dict(Counter([spangram.length for spangram in spangrams]))
+  pprint(spangramLengths)
+
+  # 2. How often are spangrams the longest word in the puzzle?
+  lt, eq, gt = 0, 0, 0
   for game in games:
-    words.append(game.words)
-
-  pprint(spangrams)
+    if game.spangram.length < max([word.length for word in game.words]):
+      lt += 1
+    elif game.spangram.length > max([word.length for word in game.words]):
+      gt += 1
+    else:
+      eq += 1
+  pprint([lt, eq, gt])
   
-  
+  # 3. How often is each size longer than the longest word?
+  info = defaultdict(lambda: {"-": 0, "=": 0, "+": 0})
+  for game in games:
+    if game.spangram.length < max([word.length for word in game.words]):
+      info[game.spangram.length][str("-")] += 1
+    elif game.spangram.length > max([word.length for word in game.words]):
+      info[game.spangram.length][str("+")] += 1
+    else:
+      info[game.spangram.length][str("=")] += 1
+  pprint(info)
 
-  
 
-        
 
   # spangrams = getSpangrams(data)
   # g1 = visualizeCells(getMostCommonCells(spangrams))
@@ -353,12 +343,13 @@ def main():
 
   # print(len(spangrams))
   # print()
-  # print(len(livesInMiddle2Columns(spangrams)) / len(spangrams))
-  # print(len(livesInMiddle4Columns(spangrams)) / len(spangrams))
-  # print()
-  # print(len(livesInMiddle2Rows(spangrams)) / len(spangrams))
-  # print(len(livesInMiddle4Rows(spangrams)) / len(spangrams))
-  # print(len(livesInMiddle6Rows(spangrams)) / len(spangrams))
+  print(len(livesInMiddle2Columns(spangrams)) / len(spangrams))
+  print(len(livesInMiddle4Columns(spangrams)) / len(spangrams))
+  print()
+  print(len(livesInMiddle2Rows(spangrams)) / len(spangrams))
+  print(len(livesInMiddle4Rows(spangrams)) / len(spangrams))
+  print(len(livesInMiddle6Rows(spangrams)) / len(spangrams))
+
 
 
   # grid = [[0 for i in range(6)] for j in range(8)]
@@ -367,8 +358,6 @@ def main():
   #     grid[i][j] = g1[i][j] + g2[i][j]
   # plt.imshow( grid ) 
   # plt.show() 
-
-
 
 
 
