@@ -206,6 +206,14 @@ def getMostCommonEdges(words):
   return cx
 
 
+def wordsThatEndInCorners(words):
+  corners = []
+  for word in words:
+    if word.locations[0] in {0, 5, 42, 47}:
+      corners.append(word)
+    elif word.locations[-1] in {0, 5, 42, 47}:
+      corners.append(word)
+  return corners
 
 ###############  VISUALIZERS  ###############
 
@@ -288,17 +296,18 @@ def livesInMiddle4Columns(words: list[Word]) -> list[Word]:
   area = {1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16, 19, 20, 21, 22, 25, 26, 27, 28, 31, 32, 33, 34, 37, 38, 39, 40, 43, 44, 45, 46}
   return [word for word in words if all([c in area for c in word.locations])]
 
-def livesInMiddle2Rows(words: list[Word]) -> list[Word]:
-  area = {i for i in range(18, 30)}
+def livesInMiddleXRows(span: int, words: list[Word]) -> list[Word]:
+  area = {i for i in range(24 - (span // 2 * 6), 24 + (span // 2 * 6))}
   return [word for word in words if all([c in area for c in word.locations])]
 
-def livesInMiddle4Rows(words: list[Word]) -> list[Word]:
-  area = {i for i in range(12, 36)}
-  return [word for word in words if all([c in area for c in word.locations])]
+################################################################################
 
-def livesInMiddle6Rows(words: list[Word]) -> list[Word]:
-  area = {i for i in range(6, 42)}
-  return [word for word in words if all([c in area for c in word.locations])]
+def visualizeMultipleChart(charts: list) -> None:
+  f, axarr = plt.subplots(1, len(charts))
+  for i in range(len(charts)):
+    axarr[i].axis("off")
+    axarr[i].imshow(charts[i])
+  plt.show()
 
 ################################################################################
 
@@ -309,7 +318,7 @@ def main():
   # Spangram analysis
   # 1. What's the most common length of the spangram?
   spangramLengths = dict(Counter([spangram.length for spangram in spangrams]))
-  pprint(spangramLengths)
+  # pprint(spangramLengths)
 
   # 2. How often are spangrams the longest word in the puzzle?
   lt, eq, gt = 0, 0, 0
@@ -320,7 +329,7 @@ def main():
       gt += 1
     else:
       eq += 1
-  pprint([lt, eq, gt])
+  # pprint([lt, eq, gt])
   
   # 3. How often is each size longer than the longest word?
   info = defaultdict(lambda: {"-": 0, "=": 0, "+": 0})
@@ -331,7 +340,58 @@ def main():
       info[game.spangram.length][str("+")] += 1
     else:
       info[game.spangram.length][str("=")] += 1
-  pprint(info)
+  # pprint(info)
+
+  # 4a. How often to spangrams end in corners?
+  # pprint(len(wordsThatEndInCorners(spangrams)) / len(spangrams))
+  
+  # 4b. How often do normal words end in corners?
+  # pprint(len(wordsThatEndInCorners(words)) / len(words))
+  
+  # 5. What are the most common squares for the ith letter in a spangram to occupy?
+  charts = [[[0 for i in range(6)] for j in range(8)] for _ in range(16)]
+  for spangram in spangrams:
+    for i in range(len(charts)):
+      if spangram.length >= i + 1:
+        charts[i][spangram.locations[i] // 6][spangram.locations[i] % 6] += 1
+  # visualizeMultipleChart(charts)
+
+
+
+  # testing average length of word for each cell
+  # number of spangrams that pass through the cell
+  gridLengths = [[0 for i in range(6)] for j in range(8)]
+  gridCount = [[0 for i in range(6)] for j in range(8)]
+  for word in words:
+    for ch in word.locations:
+      gridLengths[ch // 6][ch % 6] += word.length
+      gridCount[ch // 6][ch % 6] += 1
+  # for s in spangrams:
+  #   for ch in s.locations:
+  #     gridLengths[ch // 6][ch % 6] += s.length
+  #     gridCount[ch // 6][ch % 6] += 1
+    
+  grid = [[0 for i in range(6)] for j in range(8)]
+  for i in range(8):
+    for j in range(6):
+      grid[i][j] = gridLengths[i][j] / gridCount[i][j]
+
+
+  # f, axarr = plt.subplots(1,2)
+  # for i in range(2):
+  #   axarr[i].axis("off")
+  
+  # axarr[0].imshow(gridLengths)
+  # axarr[1].imshow(gridCount)
+
+  # plt.show()
+
+  # plt.imshow(grid)
+  # plt.show()
+
+
+
+
 
 
 
@@ -343,12 +403,12 @@ def main():
 
   # print(len(spangrams))
   # print()
-  print(len(livesInMiddle2Columns(spangrams)) / len(spangrams))
-  print(len(livesInMiddle4Columns(spangrams)) / len(spangrams))
-  print()
-  print(len(livesInMiddle2Rows(spangrams)) / len(spangrams))
-  print(len(livesInMiddle4Rows(spangrams)) / len(spangrams))
-  print(len(livesInMiddle6Rows(spangrams)) / len(spangrams))
+  # print(len(livesInMiddle2Columns(spangrams)) / len(spangrams))
+  # print(len(livesInMiddle4Columns(spangrams)) / len(spangrams))
+  # print()
+  # print(len(livesInMiddleXRows(2, spangrams)) / len(spangrams))
+  # print(len(livesInMiddleXRows(4, spangrams)) / len(spangrams))
+  # print(len(livesInMiddleXRows(6, spangrams)) / len(spangrams))
 
 
 
